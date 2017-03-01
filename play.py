@@ -7,11 +7,13 @@ import sounddevice as sd
 import numpy as np
 import traceback as tb
 
-def gen(dsp, blocksize, t0, samplerate):
-  return dsp((np.arange(blocksize)+t0)/samplerate).reshape((blocksize,1))
+def block(gen, blocksize, t0, samplerate):
+  ar = np.zeros((blocksize,1))
+  for i in range(blocksize):
+    ar[i, 0] = gen.amp((i+t0) / samplerate)
+  return ar
 
-def play(f, buffersize=20, blocksize=2048, samplerate=44100):
-  dsp = np.vectorize(f)
+def play(gen, buffersize=20, blocksize=2048, samplerate=44100):
 
   q = queue.Queue(maxsize=buffersize)
   event = threading.Event()
@@ -37,7 +39,7 @@ def play(f, buffersize=20, blocksize=2048, samplerate=44100):
   try:
     t = 0
     for _ in range(buffersize):
-      q.put_nowait(gen(dsp, blocksize, t, samplerate))  # Pre-fill queue
+      q.put_nowait(block(gen, blocksize, t, samplerate))  # Pre-fill queue
       t += blocksize
     
     stream = sd.OutputStream(
@@ -48,7 +50,7 @@ def play(f, buffersize=20, blocksize=2048, samplerate=44100):
     with stream:
       timeout = blocksize * buffersize / samplerate
       while True:
-        q.put(gen(dsp, blocksize, t, samplerate), timeout=timeout)
+        q.put(block(gen, blocksize, t, samplerate), timeout=timeout)
         t += blocksize
       event.wait()  # Wait until playback is finished
   except KeyboardInterrupt:
