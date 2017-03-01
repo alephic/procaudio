@@ -3,18 +3,17 @@ import math
 import play
 
 class AudioGenerator:
-  # t will always be greater than all previous values of t
-  # that this generator has been given
   # Return amplitude of this generator's waveform at time t (in sec)
   def amp(self, t):
     return 0
 
 class Sequencer(AudioGenerator):
-  def __init__(self, note_times):
-    self.note_times = note_times
+  # notes: [(onset_time, gen)]
+  def __init__(self, notes):
+    self.notes = notes
   
   def amp(self, t):
-    pass
+    return sum(gen.amp(t - onset_time) for (onset_time, gen) in self.notes)
 
 class TestGenerator(AudioGenerator):
   def amp(self, t):
