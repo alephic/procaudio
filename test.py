@@ -9,7 +9,14 @@ class AudioGenerator:
   def amp(self, t):
     return 0
 
-class TestGenerator:
+class Sequencer(AudioGenerator):
+  def __init__(self, note_times):
+    self.note_times = note_times
+  
+  def amp(self, t):
+    pass
+
+class TestGenerator(AudioGenerator):
   def amp(self, t):
     return math.sin(t*440*2*math.pi)*0.5
 
