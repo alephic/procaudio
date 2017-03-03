@@ -43,9 +43,29 @@ class Product(AudioGenerator):
       r *= base.amp(t)
     return r
 
-class TestGen(AudioGenerator):
+# Attack-Sustain-Decay envelope using sinusoidal curves
+class SineASD:
+  def __init__(self, attack, sustain, decay):
+    self.attack = attack
+    self.sustain = sustain
+    self.decay = decay
   def amp(self, t):
-    return math.sin(2*math.pi*440*t)
+    if t < 0:
+      return 0
+    elif t < self.attack:
+      return math.sin(((t/self.attack) - 0.5)*math.pi)*0.5 + 0.5
+    elif t < self.attack+self.sustain:
+      return 1
+    elif t < self.attack+self.sustain+self.decay:
+      return math.sin((((t-self.attack-self.sustain)/self.decay) + 0.5)*math.pi)*0.5 + 0.5
+    return 0
+
+class Loop(AudioGenerator):
+  def __init__(self, period, base):
+    self.period = period
+    self.base = base
+  def amp(self, t):
+    return self.base.amp(t % self.period)
 
 if __name__ == '__main__':
-  play.play(Scaled(0.5, TestGen()))
+  play.play(Scaled(0.5, Loop(1, Product(SineASD(0.05, 0, 0.25), Sine(80)))))
