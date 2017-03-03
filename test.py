@@ -7,17 +7,45 @@ class AudioGenerator:
   def amp(self, t):
     return 0
 
-class Sequencer(AudioGenerator):
-  # notes: [(onset_time, gen)]
-  def __init__(self, notes):
-    self.notes = notes
-  
+class Offset(AudioGenerator):
+  def __init__(self, base, offset):
+    self.base = base
+    self.offset = offset
   def amp(self, t):
-    return sum(gen.amp(t - onset_time) for (onset_time, gen) in self.notes)
+    return self.base.amp(t - self.offset)
 
-class TestGenerator(AudioGenerator):
+class Sum(AudioGenerator):
+  def __init__(self, *bases):
+    self.bases = bases
   def amp(self, t):
-    return math.sin(t*440*2*math.pi+220*math.sin(t*2*math.pi))*0.5
+    return sum(base.amp(t) for base in self.bases)
+
+class Sine(AudioGenerator):
+  def __init__(self, freq, phase=0):
+    self.freq = freq
+    self.phase = phase
+  def amp(self, t):
+    return math.sin(2*math.pi*(self.freq*t + self.phase))
+
+class Scaled(AudioGenerator):
+  def __init__(self, coef, base):
+    self.coef = coef
+    self.base = base
+  def amp(self, t):
+    return self.coef*self.base.amp(t)
+
+class Product(AudioGenerator):
+  def __init__(self, *bases):
+    self.bases = bases
+  def amp(self, t):
+    r = 1
+    for base in self.bases:
+      r *= base.amp(t)
+    return r
+
+class TestGen(AudioGenerator):
+  def amp(self, t):
+    return math.sin(2*math.pi*440*t)
 
 if __name__ == '__main__':
-  play.play(TestGenerator())
+  play.play(Scaled(0.5, TestGen()))
