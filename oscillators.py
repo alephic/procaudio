@@ -60,6 +60,25 @@ class SineASD:
       return math.sin((((t-self.attack-self.sustain)/self.decay) + 0.5)*math.pi)*0.5 + 0.5
     return 0
 
+# Attack-Sustain-Decay envelope using logistic curves
+class ExpASD:
+  def __init__(self, attack, sustain, decay, tail_cutoff=2.5):
+    self.attack = attack
+    self.sustain = sustain
+    self.decay = decay
+    self.tail_cutoff = tail_cutoff
+    self.cutoff_amp = math.exp(-self.tail_cutoff**2)
+  def amp(self, t):
+    if t < 0:
+      return 0
+    elif t < self.attack:
+      return (math.exp(-((t/self.attack - 1.0)*self.tail_cutoff)**2) - self.cutoff_amp)/(1.0-self.cutoff_amp)
+    elif t < self.attack+self.sustain:
+      return 1.0
+    elif t < self.attack+self.sustain+self.decay:
+      return (math.exp(-(((t-self.attack-self.sustain)/self.decay)*self.tail_cutoff)**2) - self.cutoff_amp)/(1.0-self.cutoff_amp)
+    return 0
+
 class Loop(AudioGenerator):
   def __init__(self, period, base):
     self.period = period
@@ -68,4 +87,4 @@ class Loop(AudioGenerator):
     return self.base.amp(t % self.period)
 
 if __name__ == '__main__':
-  play.play(Scaled(0.5, Loop(1, Product(SineASD(0.05, 0, 0.25), Sine(80)))))
+  play.play(Scaled(0.5, Loop(1, Product(ExpASD(0.05, 0, 0.25, tail_cutoff=2.5), Sine(80)))))
