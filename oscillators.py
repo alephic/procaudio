@@ -1,6 +1,5 @@
-#!/usr/local/bin/python3
+
 import math
-import play
 
 class AudioGenerator:
   # Return amplitude of this generator's waveform at time t (in sec)
@@ -26,6 +25,27 @@ class Sine(AudioGenerator):
     self.phase = phase
   def amp(self, t):
     return math.sin(2*math.pi*(self.freq*t + self.phase))
+
+class Saw(AudioGenerator):
+  def __init__(self, freq, phase=0):
+    self.freq = freq
+    self.phase = phase
+  def amp(self, t):
+    return (((t + self.phase)*self.freq) % 1.0)*2.0 - 1.0
+
+class Triangle(AudioGenerator):
+  def __init__(self, freq, phase=0):
+    self.freq = freq
+    self.phase = phase
+  def amp(self, t):
+    return (math.fabs(((t + self.phase) * self.freq) % 1.0) * 2.0 - 1.0) * 2.0 - 1.0
+
+class Square(AudioGenerator):
+  def __init__(self, freq, phase=0):
+    self.freq = freq
+    self.phase = phase
+  def amp(self, t):
+    return float(bool(((t + self.phase) * self.freq) % 1.0 > 0.5)) * 2.0 - 1.0
 
 class Scaled(AudioGenerator):
   def __init__(self, coef, base):
@@ -92,6 +112,3 @@ class Loop(AudioGenerator):
     self.base = base
   def amp(self, t):
     return self.base.amp(t % self.period)
-
-if __name__ == '__main__':
-  play.play(Scaled(0.5, Loop(1, Product(ExpASD(0.05, 0, 0.25, tail_cutoff=2.5), Sine(80)))))
