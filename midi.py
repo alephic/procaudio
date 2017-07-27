@@ -15,7 +15,6 @@ def midi_play(base_osc, attack, decay):
     gen = notes.NoteGen(base_osc, attack, decay)
 
     def callback(evt, data):
-        print(evt)
         if evt[0][0] == 144:
             gen.play_note(evt[0][1])
         elif evt[0][0] == 128:
@@ -27,4 +26,4 @@ def midi_play(base_osc, attack, decay):
     del midi_in
 
 if __name__ == "__main__":
-    midi_play(oscillators.Scaled(0.5, oscillators.Sine(440)), 0.01, 0.1)
+    midi_play(oscillators.Scaled(0.1, oscillators.Sine(440)), 0.005, 0.01)

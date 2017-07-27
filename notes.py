@@ -46,9 +46,10 @@ class NoteGen(AudioGenerator):
             kn = self.kill_notes
             self.kill_notes = self.kill_notes2
             for n in kn:
-                self.notes[n].kill(t)
-                self.notes2.add(self.notes[n])
-                del self.notes[n]
+                if n in self.notes:
+                    self.notes[n].kill(t)
+                    self.notes2.add(self.notes[n])
+                    del self.notes[n]
             self.kill_notes2 = kn
             self.kill_notes2.clear()
         for note in list(self.notes2):

@@ -67,7 +67,7 @@ def play_unbuffered(gen, blocksize=1024, samplerate=44100):
     nonlocal t
     nonlocal gen
     if status:
-      print(status)
+      return
     for i in range(blocksize):
       outdata[i, 0] = gen.amp((t+i)/samplerate)
     t += blocksize

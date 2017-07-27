@@ -1,5 +1,6 @@
 
 import math
+import numpy as np
 
 class AudioGenerator:
   # Return amplitude of this generator's waveform at time t (in sec)
@@ -114,12 +115,10 @@ class Loop(AudioGenerator):
     return self.base.amp(t % self.period)
 
 class Harmonics(AudioGenerator):
-  def __init__(self, freq, num_harmonics, waveform=Sine):
-    self.harmonics = range(num_harmonics)
-    self.oscs = [waveform(freq * (i+1)) for i in range(num_harmonics)]
-    self.weights = [1/(i+1) for i in range(num_harmonics)]
-    total_weight = sum(self.weights)
-    for i, w in enumerate(self.weights):
-      self.weights[i] = w/total_weight
+  def __init__(self, freq, num_harmonics):
+    harmonics = np.arange(num_harmonics) + 1
+    self.freqs = harmonics * freq
+    self.weights = 1.0 / harmonics
+    self.weights /= np.sum(self.weights)
   def amp(self, t):
-    return sum(self.weights[i] * self.oscs[i].amp(t) for i in self.harmonics)
+    return np.dot(np.sin(2.0*math.pi*self.freqs*t), self.weights)
