@@ -36,19 +36,21 @@ class NoteGen(AudioGenerator):
         self.kill_notes2 = set()
     def amp(self, t):
         self.t = t
-        nn = self.new_notes
-        self.new_notes = self.new_notes2
-        self.notes.update(nn)
-        self.new_notes2 = nn
-        self.new_notes2.clear()
-        kn = self.kill_notes
-        self.kill_notes = self.kill_notes2
-        for n in kn:
-            self.notes[n].kill(t)
-            self.notes2.add(self.notes[n])
-            del self.notes[n]
-        self.kill_notes2 = kn
-        self.kill_notes2.clear()
+        if self.new_notes:
+            nn = self.new_notes
+            self.new_notes = self.new_notes2
+            self.notes.update(nn)
+            self.new_notes2 = nn
+            self.new_notes2.clear()
+        if self.kill_notes:
+            kn = self.kill_notes
+            self.kill_notes = self.kill_notes2
+            for n in kn:
+                self.notes[n].kill(t)
+                self.notes2.add(self.notes[n])
+                del self.notes[n]
+            self.kill_notes2 = kn
+            self.kill_notes2.clear()
         for note in list(self.notes2):
             if note.is_dead(t):
                 self.notes2.remove(note)

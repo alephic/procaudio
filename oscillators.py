@@ -112,3 +112,14 @@ class Loop(AudioGenerator):
     self.base = base
   def amp(self, t):
     return self.base.amp(t % self.period)
+
+class Harmonics(AudioGenerator):
+  def __init__(self, freq, num_harmonics, waveform=Sine):
+    self.harmonics = range(num_harmonics)
+    self.oscs = [waveform(freq * (i+1)) for i in range(num_harmonics)]
+    self.weights = [1/(i+1) for i in range(num_harmonics)]
+    total_weight = sum(self.weights)
+    for i, w in enumerate(self.weights):
+      self.weights[i] = w/total_weight
+  def amp(self, t):
+    return sum(self.weights[i] * self.oscs[i].amp(t) for i in self.harmonics)
