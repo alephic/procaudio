@@ -60,3 +60,27 @@ def play(gen, buffersize=20, blocksize=2048, samplerate=44100):
       print('Queue timeout (error in OutputStream callback)', file=sys.stderr)
   except Exception as e:
       tb.print_exc()
+
+def play_unbuffered(gen, blocksize=1024, samplerate=44100):
+  t = 0
+  def callback(outdata, frames, time, status):
+    nonlocal t
+    nonlocal gen
+    if status:
+      print(status)
+      raise sd.CallbackStop
+    for i in range(blocksize):
+      outdata[i, 0] = gen.amp((t+i)/samplerate)
+    t += blocksize
+  try:
+    stream = sd.OutputStream(
+      samplerate=samplerate, blocksize=blocksize,
+      device=sd.default.device, channels=1, dtype='float32',
+      callback=callback
+    )
+    with stream:
+      threading.Event().wait()
+  except KeyboardInterrupt:
+    return
+  except Exception as e:
+    tb.print_exc()

@@ -43,6 +43,13 @@ class Product(AudioGenerator):
       r *= base.amp(t)
     return r
 
+class TimeScaled(AudioGenerator):
+  def __init__(self, scale, base):
+    self.scale = scale
+    self.base = base
+  def amp(self, t):
+    return self.base.amp(t*self.scale)
+
 # Attack-Sustain-Decay envelope using sinusoidal curves
 class SineASD:
   def __init__(self, attack, sustain, decay):
@@ -52,9 +59,9 @@ class SineASD:
   def amp(self, t):
     if t < 0:
       return 0
-    elif t < self.attack:
+    elif t < self.attack and self.attack > 0:
       return math.sin(((t/self.attack) - 0.5)*math.pi)*0.5 + 0.5
-    elif t < self.attack+self.sustain:
+    elif self.sustain is None or t < self.attack+self.sustain:
       return 1
     elif t < self.attack+self.sustain+self.decay:
       return math.sin((((t-self.attack-self.sustain)/self.decay) + 0.5)*math.pi)*0.5 + 0.5
