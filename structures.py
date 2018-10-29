@@ -1,42 +1,17 @@
 
 from fractions import Fraction
-from typing import Any
+from typing import Any, Iterable
 
-class Duration:
-    def take(self, amount: Fraction) -> Duration:
-        raise NotImplementedError
+Derivation = Iterable['DerivationOperation']
 
-class Infinite(Duration):
-    def __gt__(self, value):
-        return True
-    def __ge__(self, value):
-        return True
-    def __lt__(self, value):
-        return False
-    def __le__(self, value):
-        return False
-    def __eq__(self, value):
-        return False
-    def take(self, amount: Fraction) -> Duration:
-        return Finite(amount)
+Time = Fraction
+Duration = Fraction
 
-class Finite(Duration):
-    def __init__(self, length: Fraction):
+class DerivationContext:
+    def __init__(self, start: Time, length: Duration):
+        self.start = start
         self.length = length
-    def __gt__(self, value):
-        return (not isinstance(other, Infinite)) and self.length > other.length
-    def __ge__(self, value):
-        return (not isinstance(other, Infinite)) and self.length >= other.length
-    def __lt__(self, value):
-        return isinstance(other, Infinite) or self.length < other.length
-    def __le__(self, value):
-        return isinstance(other, Infinite) or self.length <= other.length
-    def __eq__(self, value):
-        return isinstance(other, Finite) and self.length == other.length
-    def take(self, amount: Fraction) -> Duration:
-        if amount > self.length:
-            raise ValueError
-        else:
-            self.length -= amount
-            return Finite(amount)
 
+class DerivationOperation:
+    def apply(self, context: DerivationContext, continuation: Derivation):
+        raise NotImplementedError
