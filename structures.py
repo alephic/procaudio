@@ -2,16 +2,31 @@
 from fractions import Fraction
 from typing import Any, Iterable
 
-Derivation = Iterable['DerivationOperation']
-
 Time = Fraction
 Duration = Fraction
 
+Derivation = Iterable['DerivationOperation']
+
+class TrackItem:
+    pass
+
+Track = Iterable[TrackItem]
+
+class Note(TrackItem):
+    def __init__(self, key: int, velocity: float):
+        self.key = key
+        self.velocity = velocity
+
+class Rest(TrackItem):
+    def __init__(self, duration: Duration):
+        self.duration = duration
+
 class DerivationContext:
-    def __init__(self, start: Time, length: Duration):
+    def __init__(self, start: Time, length: Duration, prominence: int):
         self.start = start
         self.length = length
+        self.prominence = prominence
 
 class DerivationOperation:
-    def apply(self, context: DerivationContext, continuation: Derivation):
+    def run(self, context: DerivationContext, continuation: Derivation) -> Track:
         raise NotImplementedError
