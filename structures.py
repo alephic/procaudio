@@ -1,21 +1,14 @@
 
 from fractions import Fraction
-from typing import Any, Iterable
+from typing import Any, Set, Mapping
 
 Time = Fraction
 Duration = Fraction
 
-class TrackItem:
-    pass
+class Note:
+    def __init__(self, key: int)
 
-Track = Iterable[TrackItem]
+Track = Mapping[Time, Note]
 
-class Note(TrackItem):
-    def __init__(self, key: int, velocity: float):
-        self.key = key
-        self.velocity = velocity
-
-class Rest(TrackItem):
-    def __init__(self, duration: Duration):
-        self.duration = duration
-
+def compose(seed, measures: int) -> Track:
+    track = {}
