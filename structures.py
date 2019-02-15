@@ -10,5 +10,5 @@ class Note:
 
 Track = Mapping[Time, Note]
 
-def compose(seed, measures: int) -> Track:
-    track = {}
+def compose(seed, levels: int):
+    

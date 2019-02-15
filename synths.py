@@ -1,11 +1,8 @@
 
 import numpy as np
 
-# ENVELOPES
+def osc(f, freq):
+    return lambda t: f(t*freq)
 
-# d/dx e**(-x) - e**(-a*x) = 0
-# when
-# x = -log(1/a)/(a-1)
-
-def bulge(t, peak_pos):
-    return 0 # TODO write bulge function
+def noise(t):
+    return np.random.normal(size=t.shape)
