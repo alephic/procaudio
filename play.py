@@ -8,7 +8,7 @@ import traceback as tb
 
 def block(gen, blocksize, t0, samplerate):
   t = np.reshape(np.arange(t0, t0+blocksize), (blocksize, 1)) / samplerate
-  return gen(t)
+  return 0.5*gen(t)
 
 def play(gen, buffersize=20, blocksize=2048, samplerate=44100):
 
