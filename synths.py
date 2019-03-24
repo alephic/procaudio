@@ -49,23 +49,23 @@ class Oscillator(Module):
         self.out_buffer[0] += self.phase
         np.cumsum(self.out_buffer, out=self.out_buffer)
         self.phase = self.out_buffer[-1] % self.base_period
-        self.apply_oscillator_fn()
-    def apply_oscillator_fn(self):
+        self.apply_wave_fn()
+    def apply_wave_fn(self):
         raise NotImplementedError()
 
 class Saw(Oscillator):
-    def apply_oscillator_fn(self):
+    def apply_wave_fn(self):
         np.mod(self.out_buffer, 1.0, out=self.out_buffer)
         np.multiply(self.out_buffer, 2.0, out=self.out_buffer)
         np.subtract(self.out_buffer, 1.0, out=self.out_buffer)
 
 class Sine(Oscillator):
     base_period = 2.0*np.pi
-    def apply_oscillator_fn(self):
+    def apply_wave_fn(self):
         np.sin(self.out_buffer, out=self.out_buffer)
 
 class Square(Oscillator):
-    def apply_oscillator_fn(self):
+    def apply_wave_fn(self):
         np.mod(self.out_buffer, 1.0, out=self.out_buffer)
         np.greater(self.out_buffer, 0.5, out=self.out_buffer)
         np.multiply(self.out_buffer, 2.0, out=self.out_buffer)
