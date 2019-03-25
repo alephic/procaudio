@@ -2,34 +2,62 @@
 from collections import OrderedDict
 import numpy as np
 
-class Module:
+class Source:
+    def set_buffer_size(self, buffer_size):
+        raise NotImplementedError()
+    def get_output(self, t):
+        raise NotImplementedError()
+
+class Module(Source):
     def __init__(self, input_sources, buffer_size=1024):
         self._input_sources = input_sources
+        for source in self._input_sources.values():
+            source.set_buffer_size(buffer_size)
         self.out_buffer = np.zeros(buffer_size)
         self.buffer_size = buffer_size
         self._t = 0
     def update_output(self):
         raise NotImplementedError()
-    def _set_buffer_size(self, buffer_size):
+    def set_buffer_size(self, buffer_size):
         if buffer_size != self.buffer_size:
+            for source in self._input_sources.values():
+                source.set_buffer_size(buffer_size)
             self.out_buffer = np.zeros(buffer_size)
             self.buffer_size = buffer_size
-    def _get_output(self, t):
+    def get_output(self, t):
         if self._t < t:
             self.update_output()
             self._t += self.buffer_size
         return self.out_buffer
     def __getattr__(self, name):
         if name in self.input_sources:
-            return self.input_sources[name]._get_output(self._t)
+            return self.input_sources[name].get_output(self._t)
         else:
             raise AttributeError(f'No attribute or input named "{name}"')
     def __setattr__(self, name, source):
         if name in self.input_sources:
             self.input_sources[name] = source
-            source._set_buffer_size(self.buffer_size)
+            source.set_buffer_size(self.buffer_size)
         else:
             raise AttributeError(f'No attribute or input named "{name}"')
+
+class SourceList(Source):
+    def __init__(self, sources):
+        self._sources = sources
+        self._t = 0
+    def get_output(self, t):
+        self._t = t
+        return self
+    def set_buffer_size(self, buffer_size):
+        for source in self._sources:
+            source.set_buffer_size(buffer_size)
+    def __getitem__(self, i):
+        return self._sources[i].get_output(self._t)
+    def __iter__(self):
+        for source in self._sources:
+            yield source.get_output(self._t)
+    def __len__(self):
+        return len(self._sources)
 
 class Noise(Module):
     def __init__(self):
@@ -71,14 +99,39 @@ class Square(Oscillator):
         np.multiply(self.out_buffer, 2.0, out=self.out_buffer)
         np.subtract(self.out_buffer, 1.0, out=self.out_buffer)
 
+class Amp(Module):
+    def __init__(self, source, envelope):
+        super().__init__({'source': source, 'envelope': envelope})
+    def update_output(self):
+        self.envelope.multiply(self.source, out=self.out_buffer)
+
+class Mix(Module):
+    def __init__(self, sources):
+        super().__init__({'sources': SourceList(sources)})
+    def update_output(self):
+        self.sources[0].copyto(self.out_buffer)
+        for i in range(1-len(self.sources)):
+            np.add(self.sources[i], self.out_buffer, out=self.out_buffer)
+
+class Constant(Module):
+    def __init__(self, value):
+        super().__init__({})
+        self.value = value
+        self.out_buffer.fill(value)
+    def get_output(self):
+        return self.out_buffer
+    def set_buffer_size(self, buffer_size):
+        self.buffer_size = buffer_size
+        self.out_buffer = np.full(buffer_size, self.value)
+
 class Filter:
-    def __init__(self, cutoff, resonance, source):
+    def __init__(self, cutoff, source):
         super().__init__({'cutoff': cutoff, 'source': source})
         self.buf0 = 0
         self.buf1 = 0
         self.buf2 = 0
         self.buf3 = 0
-    def update_output(self, t):
+    def update_output(self):
         source = self.source
         cutoff = self.cutoff
         for i in range(self.buffer.shape[0]):
@@ -101,5 +154,3 @@ class LowPassFilter(Filter):
 class BandPassFilter(Filter):
     def write_out_sample(self, source_value, i):
         self.out_buffer[i] = self.buf0 - self.buf3
-
-
