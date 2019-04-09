@@ -39,7 +39,7 @@ class Module(Source):
             self.input_sources[name] = source
             source.set_buffer_size(self.buffer_size)
         else:
-            raise AttributeError(f'No attribute or input named "{name}"')
+            super().__setattr__(name, source)
 
 class SourceList(Source):
     def __init__(self, sources):
@@ -154,3 +154,24 @@ class LowPassFilter(Filter):
 class BandPassFilter(Filter):
     def write_out_sample(self, source_value, i):
         self.out_buffer[i] = self.buf0 - self.buf3
+
+class LinearDecay(Module):
+    def __init__(self, trigger, decay_time):
+        super().__init__({'trigger': trigger})
+        self.decay_time = decay_time
+    def update_output(self):
+        self.trigger.copyto(self.out_buffer)
+        np.minimum(self.out_buffer, self.decay_time, out=self.out_buffer)
+        np.divide(self.out_buffer, self.decay_time, out=self.out_buffer)
+        np.subtract(1.0, self.out_buffer, out=self.out_buffer)
+
+class QuadraticDecay(Module):
+    def __init__(self, trigger, decay_time):
+        super().__init__({'trigger': trigger})
+        self.decay_time = decay_time
+    def update_output(self):
+        self.trigger.copyto(self.out_buffer)
+        np.minimum(self.out_buffer, self.decay_time, out=self.out_buffer)
+        np.divide(self.out_buffer, self.decay_time, out=self.out_buffer)
+        np.multiply(self.out_buffer, self.out_buffer, out=self.out_buffer)
+        np.subtract(1.0, self.out_buffer, out=self.out_buffer)
