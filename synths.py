@@ -110,7 +110,7 @@ class Mix(Module):
         super().__init__({'sources': SourceList(sources)})
     def update_output(self):
         self.sources[0].copyto(self.out_buffer)
-        for i in range(1-len(self.sources)):
+        for i in range(1, len(self.sources)):
             np.add(self.sources[i], self.out_buffer, out=self.out_buffer)
 
 class Constant(Module):
