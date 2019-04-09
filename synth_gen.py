@@ -1,5 +1,5 @@
 import random
-import synths
+import mods
 
-# establish an environment with a pool of sources
-# sources should be indexable by their "capabilities" (signal, envelope, frequency, modulator)
+def synth():
+    envelope = envelope()
