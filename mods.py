@@ -178,10 +178,11 @@ class QuadraticDecay(Module):
 
 class LinearADSR(Module):
     def __init__(self, trigger_press, trigger_release, attack_time, decay_time, sustain_level, release_time):
-        super().__init__(trigger_press, trigger_release)
+        super().__init__({'trigger_press': trigger_press, 'trigger_release': trigger_release})
         self.attack_time = attack_time
         self.decay_time = decay_time
         self.sustain_level = sustain_level
         self.release_time = release_time
     def update_output(self):
         self.trigger_press.copyto(self.out_buffer)
+        
