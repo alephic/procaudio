@@ -4,6 +4,14 @@ from typing import Any, Set, Iterable, Tuple, Mapping
 
 Time = Fraction
 Duration = Fraction
-Note = int
 
-Track = Mapping[Time, Set[Note]]
+class Note:
+    def __init__(self, key: int):
+        self.key = key
+
+class HeldNote(Note):
+    def __init__(self, key: int, length: Duration):
+        super().__init__(key)
+        self.length = length
+
+Track = Mapping[Time, Note]

@@ -156,21 +156,21 @@ class BandPassFilter(Filter):
         self.out_buffer[i] = self.buf0 - self.buf3
 
 class LinearDecay(Module):
-    def __init__(self, trigger, decay_time):
-        super().__init__({'trigger': trigger})
+    def __init__(self, trigger_press, decay_time):
+        super().__init__({'trigger_press': trigger_press})
         self.decay_time = decay_time
     def update_output(self):
-        self.trigger.copyto(self.out_buffer)
+        self.trigger_press.copyto(self.out_buffer)
         np.minimum(self.out_buffer, self.decay_time, out=self.out_buffer)
         np.divide(self.out_buffer, self.decay_time, out=self.out_buffer)
         np.subtract(1.0, self.out_buffer, out=self.out_buffer)
 
 class QuadraticDecay(Module):
-    def __init__(self, trigger, decay_time):
-        super().__init__({'trigger': trigger})
+    def __init__(self, trigger_press, decay_time):
+        super().__init__({'trigger_press': trigger_press})
         self.decay_time = decay_time
     def update_output(self):
-        self.trigger.copyto(self.out_buffer)
+        self.trigger_press.copyto(self.out_buffer)
         np.minimum(self.out_buffer, self.decay_time, out=self.out_buffer)
         np.divide(self.out_buffer, self.decay_time, out=self.out_buffer)
         np.multiply(self.out_buffer, self.out_buffer, out=self.out_buffer)
@@ -185,4 +185,13 @@ class LinearADSR(Module):
         self.release_time = release_time
     def update_output(self):
         self.trigger_press.copyto(self.out_buffer)
+
+class TriggerPressGenerator(Module):
+    def __init__(self, source_track, sample_rate):
+        super().__init__({})
+        self.source_track = source_track
+        self.sample_rate = sample_rate
+        self.next_onset = None #TODO figure out most efficient way to track notes vs. buffer time
+    
+    def update_output(self):
         
