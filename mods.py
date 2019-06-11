@@ -113,18 +113,17 @@ class Mix(Module):
         for i in range(1, len(self.sources)):
             np.add(self.sources[i], self.out_buffer, out=self.out_buffer)
 
-class Constant(Module):
+class Constant(Source):
     def __init__(self, value):
-        super().__init__({})
         self.value = value
         self.out_buffer.fill(value)
-    def get_output(self):
+    def get_output(self, t):
         return self.out_buffer
     def set_buffer_size(self, buffer_size):
         self.buffer_size = buffer_size
         self.out_buffer = np.full(buffer_size, self.value)
 
-class Filter:
+class Filter(Module):
     def __init__(self, cutoff, source):
         super().__init__({'cutoff': cutoff, 'source': source})
         self.buf0 = 0
@@ -155,43 +154,40 @@ class BandPassFilter(Filter):
     def write_out_sample(self, source_value, i):
         self.out_buffer[i] = self.buf0 - self.buf3
 
-class LinearDecay(Module):
-    def __init__(self, trigger_press, decay_time):
-        super().__init__({'trigger_press': trigger_press})
-        self.decay_time = decay_time
-    def update_output(self):
-        self.trigger_press.copyto(self.out_buffer)
-        np.minimum(self.out_buffer, self.decay_time, out=self.out_buffer)
-        np.divide(self.out_buffer, self.decay_time, out=self.out_buffer)
-        np.subtract(1.0, self.out_buffer, out=self.out_buffer)
-
-class QuadraticDecay(Module):
-    def __init__(self, trigger_press, decay_time):
-        super().__init__({'trigger_press': trigger_press})
-        self.decay_time = decay_time
-    def update_output(self):
-        self.trigger_press.copyto(self.out_buffer)
-        np.minimum(self.out_buffer, self.decay_time, out=self.out_buffer)
-        np.divide(self.out_buffer, self.decay_time, out=self.out_buffer)
-        np.multiply(self.out_buffer, self.out_buffer, out=self.out_buffer)
-        np.subtract(1.0, self.out_buffer, out=self.out_buffer)
-
-class LinearADSR(Module):
-    def __init__(self, trigger_press, trigger_release, attack_time, decay_time, sustain_level, release_time):
-        super().__init__({'trigger_press': trigger_press, 'trigger_release': trigger_release})
-        self.attack_time = attack_time
-        self.decay_time = decay_time
-        self.sustain_level = sustain_level
-        self.release_time = release_time
-    def update_output(self):
-        self.trigger_press.copyto(self.out_buffer)
-
-class TriggerPressGenerator(Module):
-    def __init__(self, source_track, sample_rate):
-        super().__init__({})
-        self.source_track = source_track
+class Trigger(Source):
+    def __init__(self, track, sample_rate=44100, buffer_size=1024):
+        self.track = track
         self.sample_rate = sample_rate
-        self.next_onset = None #TODO figure out most efficient way to track notes vs. buffer time
-    
+        self.last_event = None
+        self.curr_event = None
+        self.track_iter = iter(track)
+        self._t = 0
+        self.out_buffer = np.zeros(buffer_size)
+        self.update_events()
+    def set_buffer_size(self, size):
+        self.out_buffer = np.zeros(buffer_size)
+    def get_output(self, t):
+        if self._t < t:
+            self.update_output()
+            self._t += self.buffer_size
+        return self.out_buffer
+    def update_events(self):
+        self.last_event = self.curr_event
+        self.curr_event = None
+        try:
+            evt = next(self.track_iter)
+        except StopIteration:
+            return
+        self.curr_event = evt
     def update_output(self):
-        
+        self.out_buffer.fill(0)
+        for i in range(self.out_buffer.shape[0]):
+            time = (i + self._t)/self.sample_rate
+            while self.curr_event is not None and time >= self.curr_event:
+                self.update_events()
+            if self.last_event is not None:
+                self.out_buffer[i] = time - self.last_event
+            else:
+                self.out_buffer[i] = -1.0
+            
+
