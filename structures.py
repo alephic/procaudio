@@ -13,5 +13,5 @@ def note_times(notes):
     for note in notes:
         yield note.time
 
-# composition procedure:
-# start with a base position (time 0, metric level 0)
+def compose(scale, min_meter_level):
+    init_span = Span()

@@ -230,7 +230,7 @@ class NoteFreq(Source):
         self.out_buffer = np.zeros(DEFAULT_BUFFER_SIZE)
     def update_next_note(self):
         if self.next_note is not None:
-            self.curr_freq = self.scale.index_to_freq(self.next_note.key)
+            self.curr_freq = self.scale.key_to_freq(self.next_note.key)
         self.next_note = None
         try:
             self.next_note = next(self.track_iter)
