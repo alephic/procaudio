@@ -8,13 +8,17 @@ class Source:
     def get_output(self, t):
         raise NotImplementedError()
 
+DEFAULT_BUFFER_SIZE = 1024
+
+NO_VALUE = -1.0
+
 class Module(Source):
-    def __init__(self, input_sources, buffer_size=1024):
+    def __init__(self, **input_sources):
         self._input_sources = input_sources
         for source in self._input_sources.values():
             source.set_buffer_size(buffer_size)
         self.out_buffer = np.zeros(buffer_size)
-        self.buffer_size = buffer_size
+        self.buffer_size = DEFAULT_BUFFER_SIZE
         self._t = 0
     def update_output(self):
         raise NotImplementedError()
@@ -68,7 +72,7 @@ class Noise(Module):
 class Oscillator(Module):
     base_period = 1.0
     def __init__(self, frequency, sample_rate=44100):
-        super().__init__({'frequency': frequency})
+        super().__init__(frequency=frequency)
         self.phase = 0
         self.sample_rate = sample_rate
     def update_output(self):
@@ -101,13 +105,13 @@ class Square(Oscillator):
 
 class Amp(Module):
     def __init__(self, source, envelope):
-        super().__init__({'source': source, 'envelope': envelope})
+        super().__init__(source=source, envelope=envelope)
     def update_output(self):
         self.envelope.multiply(self.source, out=self.out_buffer)
 
 class Mix(Module):
     def __init__(self, sources):
-        super().__init__({'sources': SourceList(sources)})
+        super().__init__(sources=SourceList(sources))
     def update_output(self):
         self.sources[0].copyto(self.out_buffer)
         for i in range(1, len(self.sources)):
@@ -125,7 +129,7 @@ class Constant(Source):
 
 class Filter(Module):
     def __init__(self, cutoff, source):
-        super().__init__({'cutoff': cutoff, 'source': source})
+        super().__init__(cutoff=cutoff, source=source)
         self.buf0 = 0
         self.buf1 = 0
         self.buf2 = 0
@@ -188,6 +192,38 @@ class Trigger(Source):
             if self.last_event is not None:
                 self.out_buffer[i] = time - self.last_event
             else:
-                self.out_buffer[i] = -1.0
+                self.out_buffer[i] = NO_VALUE
             
+class ADSR(Module):
+    def __init__(self, press: Trigger, a, d, release: Trigger = None, s = 0, r = 0):
+        if release is not None:
+            super().__init__(press=press, release=release)
+            self.s = s
+            self.r = r
+        else:
+            super().__init__(press=press)
+        self.a = a
+        self.d = d
+        self.has_sustain = release is not None
+    def update_output(self):
+        press = self.press
+        self.out_buffer.fill(1)
+        np.subtract(self.out_buffer, (self.a-press)/self.a,
+            out=self.out_buffer,
+            where=np.logical_and(press < self.a, press != NO_VALUE)
+        )
+        np.subtract(self.out_buffer, np.minimum(press-self.a, self.d)*((1.0-self.s)/self.d),
+            out=self.out_buffer,
+            where=press >= self.a
+        )
+        zero_condition = press == NO_VALUE
+        if self.has_sustain:
+            release = self.release
+            np.subtract(self.out_buffer, release * (self.s/self.r),
+                out=self.out_buffer,
+                where=np.logical_and(release != NO_VALUE, release < self.r)
+            )
+            np.logical_or(zero_condition, release > self.r, out=zero_condition)
+        np.copyto(self.out_buffer, 0, where=zero_condition)
+        
 

@@ -15,3 +15,6 @@ class HeldNote(Note):
         self.length = length
 
 Track = Mapping[Time, Note]
+
+# composition procedure:
+# start with a base position (time 0, metric level 0)
