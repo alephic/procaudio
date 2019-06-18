@@ -1,6 +1,9 @@
 
-from collections import OrderedDict
 import numpy as np
+
+DEFAULT_BUFFER_SIZE = 1024
+
+NO_VALUE = -1.0
 
 class Source:
     def set_buffer_size(self, buffer_size):
@@ -8,64 +11,65 @@ class Source:
     def get_output(self, t):
         raise NotImplementedError()
 
-DEFAULT_BUFFER_SIZE = 1024
+class Constant(Source):
+    def __init__(self, value):
+        self.value = value
+        self.out_buffer = np.full(DEFAULT_BUFFER_SIZE, value, dtype=np.float)
+    def get_output(self, t):
+        return self.out_buffer
+    def set_buffer_size(self, buffer_size):
+        if buffer_size != self.buffer_size:
+            self.buffer_size = buffer_size
+            self.out_buffer = np.full(buffer_size, self.value, dtype=np.float)
 
-NO_VALUE = -1.0
+class SourceBundle:
+    def __init__(self, parent, sources):
+        self._dict = {k: (v if isinstance(v, Source) else Constant(v)) for k, v in sources.items()}
+        self._parent = parent
+    def __getattr__(self, name):
+        return self._dict[name].get_output(self._parent._t)
 
 class Module(Source):
-    def __init__(self, **input_sources):
-        self._input_sources = input_sources
-        for source in self._input_sources.values():
-            source.set_buffer_size(buffer_size)
-        self.out_buffer = np.zeros(buffer_size)
+    def __init__(self, **sources):
+        self.sources = SourceBundle(self, sources)
         self.buffer_size = DEFAULT_BUFFER_SIZE
+        self.out_buffer = np.zeros(self.buffer_size)
         self._t = 0
     def update_output(self):
         raise NotImplementedError()
     def set_buffer_size(self, buffer_size):
         if buffer_size != self.buffer_size:
-            for source in self._input_sources.values():
+            for source in self.sources._dict.values():
                 source.set_buffer_size(buffer_size)
             self.out_buffer = np.zeros(buffer_size)
             self.buffer_size = buffer_size
     def get_output(self, t):
-        if self._t < t:
+        if self._t != t:
+            self._t = t
             self.update_output()
-            self._t += self.buffer_size
         return self.out_buffer
-    def __getattr__(self, name):
-        if name in self.input_sources:
-            return self.input_sources[name].get_output(self._t)
-        else:
-            raise AttributeError(f'No attribute or input named "{name}"')
-    def __setattr__(self, name, source):
-        if name in self.input_sources:
-            self.input_sources[name] = source
-            source.set_buffer_size(self.buffer_size)
-        else:
-            super().__setattr__(name, source)
 
 class SourceList(Source):
     def __init__(self, sources):
-        self._sources = sources
+        self._list = sources
         self._t = 0
     def get_output(self, t):
         self._t = t
         return self
     def set_buffer_size(self, buffer_size):
-        for source in self._sources:
+        for source in self._list:
             source.set_buffer_size(buffer_size)
     def __getitem__(self, i):
-        return self._sources[i].get_output(self._t)
+        return self._list[i].get_output(self._t)
     def __iter__(self):
-        for source in self._sources:
+        for source in self._list:
             yield source.get_output(self._t)
     def __len__(self):
-        return len(self._sources)
+        return len(self._list)
 
 class Noise(Module):
     def __init__(self):
-        super().__init__({})
+        super().__init__()
     def update_output(self):
         self.out_buffer = np.random.uniform(-1.0, 1.0, size=self.buffer_size)
 
@@ -76,7 +80,7 @@ class Oscillator(Module):
         self.phase = 0
         self.sample_rate = sample_rate
     def update_output(self):
-        self.frequency.copyto(self.out_buffer)
+        np.copyto(self.sources.frequency, self.out_buffer)
         self.out_buffer *= self.base_period / self.sample_rate
         self.out_buffer[0] += self.phase
         np.cumsum(self.out_buffer, out=self.out_buffer)
@@ -104,45 +108,35 @@ class Square(Oscillator):
         np.subtract(self.out_buffer, 1.0, out=self.out_buffer)
 
 class Amp(Module):
-    def __init__(self, source, envelope):
-        super().__init__(source=source, envelope=envelope)
+    def __init__(self, base, envelope):
+        super().__init__(base=base, envelope=envelope)
     def update_output(self):
-        self.envelope.multiply(self.source, out=self.out_buffer)
+        np.multiply(self.sources.envelope, self.sources.base, out=self.out_buffer)
 
 class Mix(Module):
     def __init__(self, sources):
-        super().__init__(sources=SourceList(sources))
+        super().__init__(source_list=SourceList(sources))
     def update_output(self):
-        self.sources[0].copyto(self.out_buffer)
-        for i in range(1, len(self.sources)):
-            np.add(self.sources[i], self.out_buffer, out=self.out_buffer)
-
-class Constant(Source):
-    def __init__(self, value):
-        self.value = value
-        self.out_buffer.fill(value)
-    def get_output(self, t):
-        return self.out_buffer
-    def set_buffer_size(self, buffer_size):
-        self.buffer_size = buffer_size
-        self.out_buffer = np.full(buffer_size, self.value)
+        self.sources.source_list[0].copyto(self.out_buffer)
+        for i in range(1, len(self.sources.source_list)):
+            np.add(self.sources.source_list[i], self.out_buffer, out=self.out_buffer)
 
 class Filter(Module):
-    def __init__(self, cutoff, source):
-        super().__init__(cutoff=cutoff, source=source)
+    def __init__(self, cutoff, base):
+        super().__init__(cutoff=cutoff, base=base)
         self.buf0 = 0
         self.buf1 = 0
         self.buf2 = 0
         self.buf3 = 0
     def update_output(self):
-        source = self.source
-        cutoff = self.cutoff
+        base = self.sources.base
+        cutoff = self.sources.cutoff
         for i in range(self.buffer.shape[0]):
-            self.buf0 += cutoff[i]*(source[i] - self.buf0)
+            self.buf0 += cutoff[i]*(base[i] - self.buf0)
             self.buf1 += cutoff[i]*(self.buf0 - self.buf1)
             self.buf2 += cutoff[i]*(self.buf1 - self.buf2)
             self.buf3 += cutoff[i]*(self.buf2 - self.buf3)
-            self.write_out_sample(source[i], i)
+            self.write_out_sample(base[i], i)
     def write_out_sample(self, source_value, i):
         raise NotImplementedError('Filter mode must be specified by using a subclass of Filter')
 
@@ -168,11 +162,12 @@ class Trigger(Source):
         self.out_buffer = np.zeros(DEFAULT_BUFFER_SIZE)
         self.update_events()
     def set_buffer_size(self, size):
-        self.out_buffer = np.zeros(size)
+        if size != self.out_buffer.shape[0]:
+            self.out_buffer = np.zeros(size)
     def get_output(self, t):
-        if self._t < t:
+        if self._t != t:
+            self._t = t
             self.update_output()
-            self._t += self.out_buffer.shape[0]
         return self.out_buffer
     def update_events(self):
         self.last_event = self.curr_event
@@ -203,7 +198,7 @@ class ADSR(Module):
         self.d = d
         self.has_sustain = release is not None
     def update_output(self):
-        press = self.press
+        press = self.sources.press
         self.out_buffer.fill(1)
         np.subtract(self.out_buffer, (self.a-press)/self.a,
             out=self.out_buffer,
@@ -215,7 +210,7 @@ class ADSR(Module):
         )
         zero_condition = press == NO_VALUE
         if self.has_sustain:
-            release = self.release
+            release = self.sources.release
             np.subtract(self.out_buffer, release * (self.s/self.r),
                 out=self.out_buffer,
                 where=np.logical_and(release != NO_VALUE, release < self.r)
@@ -242,11 +237,12 @@ class NoteFreq(Source):
         except StopIteration:
             pass
     def set_buffer_size(self, size):
-        self.out_buffer = np.zeros(size)
+        if size != self.out_buffer.shape[0]:
+            self.out_buffer = np.zeros(size)
     def get_output(self, t):
-        if self._t < t:
+        if self._t != t:
+            self._t = t
             self.update_output()
-            self._t += self.out_buffer.shape[0]
         return self.out_buffer
     def update_output(self):
         for i in range(self.out_buffer.shape[0]):
