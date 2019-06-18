@@ -159,21 +159,20 @@ class BandPassFilter(Filter):
         self.out_buffer[i] = self.buf0 - self.buf3
 
 class Trigger(Source):
-    def __init__(self, track, sample_rate=44100, buffer_size=1024):
-        self.track = track
+    def __init__(self, track, sample_rate=44100):
         self.sample_rate = sample_rate
         self.last_event = None
         self.curr_event = None
         self.track_iter = iter(track)
         self._t = 0
-        self.out_buffer = np.zeros(buffer_size)
+        self.out_buffer = np.zeros(DEFAULT_BUFFER_SIZE)
         self.update_events()
     def set_buffer_size(self, size):
-        self.out_buffer = np.zeros(buffer_size)
+        self.out_buffer = np.zeros(size)
     def get_output(self, t):
         if self._t < t:
             self.update_output()
-            self._t += self.buffer_size
+            self._t += self.out_buffer.shape[0]
         return self.out_buffer
     def update_events(self):
         self.last_event = self.curr_event
@@ -184,15 +183,13 @@ class Trigger(Source):
             return
         self.curr_event = evt
     def update_output(self):
-        self.out_buffer.fill(0)
+        self.out_buffer.fill(NO_VALUE)
         for i in range(self.out_buffer.shape[0]):
             time = (i + self._t)/self.sample_rate
             while self.curr_event is not None and time >= self.curr_event:
                 self.update_events()
             if self.last_event is not None:
                 self.out_buffer[i] = time - self.last_event
-            else:
-                self.out_buffer[i] = NO_VALUE
             
 class ADSR(Module):
     def __init__(self, press: Trigger, a, d, release: Trigger = None, s = 0, r = 0):
@@ -226,4 +223,34 @@ class ADSR(Module):
             np.logical_or(zero_condition, release > self.r, out=zero_condition)
         np.copyto(self.out_buffer, 0, where=zero_condition)
         
-
+class NoteFreq(Source):
+    def __init__(self, track, scale, sample_rate=44100):
+        self.track_iter = iter(track)
+        self.scale = scale
+        self.sample_rate = sample_rate
+        self.curr_freq = 0
+        self._t = 0
+        self.next_note = None
+        self.update_next_note()
+        self.out_buffer = np.zeros(DEFAULT_BUFFER_SIZE)
+    def update_next_note(self):
+        if self.next_note is not None:
+            self.curr_freq = self.scale.index_to_freq(self.next_note.key)
+        self.next_note = None
+        try:
+            self.next_note = next(self.track_iter)
+        except StopIteration:
+            pass
+    def set_buffer_size(self, size):
+        self.out_buffer = np.zeros(size)
+    def get_output(self, t):
+        if self._t < t:
+            self.update_output()
+            self._t += self.out_buffer.shape[0]
+        return self.out_buffer
+    def update_output(self):
+        for i in range(self.out_buffer.shape[0]):
+            time = (i + self._t)/self.sample_rate
+            while self.next_note is not None and time >= self.next_note.time:
+                self.update_next_note()
+            self.out_buffer[i] = self.curr_freq
