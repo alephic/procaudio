@@ -152,11 +152,11 @@ class BandPassFilter(Filter):
         self.out_buffer[i] = self.buf0 - self.buf3
 
 class Trigger(Source):
-    def __init__(self, track, sample_rate=44100):
+    def __init__(self, event_times, sample_rate=44100):
         self.sample_rate = sample_rate
         self.last_event = None
         self.curr_event = None
-        self.track_iter = iter(track)
+        self.event_iter = iter(event_times)
         self._t = 0
         self.out_buffer = np.zeros(DEFAULT_BUFFER_SIZE)
         self.update_events()
@@ -172,7 +172,7 @@ class Trigger(Source):
         self.last_event = self.curr_event
         self.curr_event = None
         try:
-            evt = next(self.track_iter)
+            evt = next(self.event_iter)
         except StopIteration:
             return
         self.curr_event = evt
@@ -249,3 +249,7 @@ class NoteFreq(Source):
             while self.next_note is not None and time >= self.next_note.time:
                 self.update_next_note()
             self.out_buffer[i] = self.curr_freq
+
+def note_times(notes):
+    for note in notes:
+        yield note.time
