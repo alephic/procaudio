@@ -249,7 +249,3 @@ class NoteFreq(Source):
             while self.next_note is not None and time >= self.next_note.time:
                 self.update_next_note()
             self.out_buffer[i] = self.curr_freq
-
-def note_times(notes):
-    for note in notes:
-        yield note.time
