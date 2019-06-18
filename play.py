@@ -24,11 +24,11 @@ def play(mod, buffersize=20, blocksize=2048, samplerate=44100):
       print('Buffer is empty: increase buffersize?', file=sys.stderr)
       raise sd.CallbackAbort
     if len(data) < len(outdata):
-      outdata[:len(data)] = data
-      outdata[len(data):] = 0
+      outdata[:len(data), 0] = data
+      outdata[len(data):, 0] = 0
       raise sd.CallbackStop
     else:
-      outdata[:] = data
+      outdata[:, 0] = data
 
   try:
     t = 0

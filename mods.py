@@ -18,8 +18,7 @@ class Constant(Source):
     def get_output(self, t):
         return self.out_buffer
     def set_buffer_size(self, buffer_size):
-        if buffer_size != self.buffer_size:
-            self.buffer_size = buffer_size
+        if buffer_size != self.out_buffer.shape[0]:
             self.out_buffer = np.full(buffer_size, self.value, dtype=np.float)
 
 class SourceBundle:
@@ -80,7 +79,7 @@ class Oscillator(Module):
         self.phase = 0
         self.sample_rate = sample_rate
     def update_output(self):
-        np.copyto(self.sources.frequency, self.out_buffer)
+        np.copyto(self.out_buffer, self.sources.frequency)
         self.out_buffer *= self.base_period / self.sample_rate
         self.out_buffer[0] += self.phase
         np.cumsum(self.out_buffer, out=self.out_buffer)
@@ -117,7 +116,7 @@ class Mix(Module):
     def __init__(self, sources):
         super().__init__(source_list=SourceList(sources))
     def update_output(self):
-        self.sources.source_list[0].copyto(self.out_buffer)
+        np.copyto(self.out_buffer, self.sources.source_list[0])
         for i in range(1, len(self.sources.source_list)):
             np.add(self.sources.source_list[i], self.out_buffer, out=self.out_buffer)
 
