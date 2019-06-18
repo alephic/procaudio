@@ -33,7 +33,7 @@ class Module(Source):
         self.sources = SourceBundle(self, sources)
         self.buffer_size = DEFAULT_BUFFER_SIZE
         self.out_buffer = np.zeros(self.buffer_size)
-        self._t = 0
+        self._t = -1
     def update_output(self):
         raise NotImplementedError()
     def set_buffer_size(self, buffer_size):
@@ -51,7 +51,7 @@ class Module(Source):
 class SourceList(Source):
     def __init__(self, sources):
         self._list = sources
-        self._t = 0
+        self._t = -1
     def get_output(self, t):
         self._t = t
         return self
@@ -157,7 +157,7 @@ class Trigger(Source):
         self.last_event = None
         self.curr_event = None
         self.event_iter = iter(event_times)
-        self._t = 0
+        self._t = -1
         self.out_buffer = np.zeros(DEFAULT_BUFFER_SIZE)
         self.update_events()
     def set_buffer_size(self, size):
@@ -189,20 +189,21 @@ class ADSR(Module):
     def __init__(self, press: Trigger, a, d, release: Trigger = None, s = 0, r = 0):
         if release is not None:
             super().__init__(press=press, release=release)
-            self.s = s
-            self.r = r
         else:
             super().__init__(press=press)
         self.a = a
         self.d = d
+        self.s = s
+        self.r = r
         self.has_sustain = release is not None
     def update_output(self):
         press = self.sources.press
         self.out_buffer.fill(1)
-        np.subtract(self.out_buffer, (self.a-press)/self.a,
-            out=self.out_buffer,
-            where=np.logical_and(press < self.a, press != NO_VALUE)
-        )
+        if self.a > 0.0:
+            np.subtract(self.out_buffer, (self.a-press)/self.a,
+                out=self.out_buffer,
+                where=np.logical_and(press < self.a, press != NO_VALUE)
+            )
         np.subtract(self.out_buffer, np.minimum(press-self.a, self.d)*((1.0-self.s)/self.d),
             out=self.out_buffer,
             where=press >= self.a
@@ -223,7 +224,7 @@ class NoteFreq(Source):
         self.scale = scale
         self.sample_rate = sample_rate
         self.curr_freq = 0
-        self._t = 0
+        self._t = -1
         self.next_note = None
         self.update_next_note()
         self.out_buffer = np.zeros(DEFAULT_BUFFER_SIZE)
