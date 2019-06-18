@@ -219,8 +219,8 @@ class ADSR(Module):
         np.copyto(self.out_buffer, 0, where=zero_condition)
         
 class NoteFreq(Source):
-    def __init__(self, track, scale, sample_rate=44100):
-        self.track_iter = iter(track)
+    def __init__(self, notes, scale, sample_rate=44100):
+        self.note_iter = iter(notes)
         self.scale = scale
         self.sample_rate = sample_rate
         self.curr_freq = 0
@@ -233,7 +233,7 @@ class NoteFreq(Source):
             self.curr_freq = self.scale.key_to_freq(self.next_note.key)
         self.next_note = None
         try:
-            self.next_note = next(self.track_iter)
+            self.next_note = next(self.note_iter)
         except StopIteration:
             pass
     def set_buffer_size(self, size):
