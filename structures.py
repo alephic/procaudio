@@ -23,9 +23,10 @@ class TimeTracker:
         self.time = time
 
 class Span:
-    def __init__(self, length, children):
+    def __init__(self, length, children, parent=None):
         self.length = length
         self.children = children
+        self.parent = parent
     def unroll(self, time_tracker=None):
         time_tracker = time_tracker or TimeTracker()
         for child in self.children:
@@ -34,12 +35,4 @@ class Span:
             else:
                 yield from child.unroll(time_tracker)
         time_tracker.time += self.length
-
-class Position:
-    def __init__(self, time, meter_level):
-        self.time = time
-        self.meter_level = meter_level
-    def __hash__(self):
-        return hash(self.time) ^ hash(self.meter_level)
-    def __eq__(self, other):
-        return self.time == other.time and self.meter_level == other.meter_level
+    
