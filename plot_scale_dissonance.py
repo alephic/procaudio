@@ -1,6 +1,5 @@
 
-from dissonance import dissonance
-from scales import EqualTemperament
+from tone import dissonance, EqualTemperament
 import numpy as np
 import matplotlib.pyplot as plt
 
