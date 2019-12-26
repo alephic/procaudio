@@ -1,9 +1,9 @@
 
-from tone import dissonance, EqualTemperament
+from tone import dissonance, TTET
 import numpy as np
 import matplotlib.pyplot as plt
 
-def plot_dissonance(scale=EqualTemperament(440, 12), show=True):
+def plot_dissonance(scale=TTET, show=True):
     base_freq = scale.key_to_freq(0)
     plt.plot(
         np.arange(scale.keys_per_octave+1),
@@ -11,3 +11,6 @@ def plot_dissonance(scale=EqualTemperament(440, 12), show=True):
     )
     if show:
         plt.show()
+
+if __name__ == "__main__":
+    plot_dissonance()
