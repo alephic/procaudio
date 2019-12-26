@@ -1,4 +1,2 @@
 
-Song: BaseDynamics + Set[Track]
-Track: Synth + [Event]
-
+start with a scale and a span containing 1 note
